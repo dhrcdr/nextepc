@@ -13,13 +13,16 @@
 
 static int _gtpv2_c_recv_cb(sock_id sock, void *data)
 {
+    char buf[CORE_ADDRSTRLEN];
     status_t rv;
     event_t e;
     pkbuf_t *pkbuf = NULL;
+    c_sockaddr_t from;
+    gtp_header_t *gtp_h = NULL;
 
     d_assert(sock, return -1, "Null param");
 
-    rv = gtp_recv(sock, &pkbuf);
+    rv = gtp_recvfrom(sock, &pkbuf, &from);
     if (rv != CORE_OK)
     {
         if (errno == EAGAIN)
@@ -31,15 +34,46 @@ static int _gtpv2_c_recv_cb(sock_id sock, void *data)
     d_trace(50, "[GTPv2] RECV : ");
     d_trace_hex(50, pkbuf->payload, pkbuf->len);
 
-    event_set(&e, MME_EVT_S11_MESSAGE);
-    event_set_param1(&e, (c_uintptr_t)pkbuf);
-    rv = mme_event_send(&e);
-    if (rv != CORE_OK)
+    gtp_h = (gtp_header_t *)pkbuf->payload;
+    if (gtp_h->type == GTP_ECHO_REQUEST_TYPE)
     {
-        d_error("mme_event_send error");
+        pkbuf_t *echo_rsp;
+
+        d_trace(3, "[GTPv2] RECV Echo Request from [%s]\n",
+                CORE_ADDR(&from, buf));
+        echo_rsp = gtp_handle_echo_req(pkbuf);
+        if (echo_rsp)
+        {
+            ssize_t sent;
+
+            /* Echo reply */
+            d_trace(3, "[GTPv2] SEND Echo Response to [%s]\n",
+                    CORE_ADDR(&from, buf));
+
+            sent = core_sendto(sock,
+                    echo_rsp->payload, echo_rsp->len, 0, &from);
+            if (sent < 0 || sent != echo_rsp->len)
+            {
+                d_error("core_sendto failed(%d:%s)", errno, strerror(errno));
+            }
+            pkbuf_free(echo_rsp);
+        }
+
         pkbuf_free(pkbuf);
-        return -1;
     }
+    else
+    {
+        event_set(&e, MME_EVT_S11_MESSAGE);
+        event_set_param1(&e, (c_uintptr_t)pkbuf);
+        rv = mme_event_send(&e);
+        if (rv != CORE_OK)
+        {
+            d_error("mme_event_send error");
+            pkbuf_free(pkbuf);
+            return -1;
+        }
+    }
+
     return 0;
 }
 

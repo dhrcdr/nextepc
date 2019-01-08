@@ -258,69 +258,104 @@ pkbuf_t *gtp_handle_echo_req(pkbuf_t *pkb)
     d_assert(pkb, return NULL, "pkt is NULL");
 
     gtph = (gtp_header_t *)pkb->payload;
-    /* Check GTP version. Now only support GTPv1(version = 1) */
-    if ((gtph->flags >> 5) != 1)
+    /* Check GTP version. Support for GTPv1-U */
+    if ((gtph->flags >> 5) == 1)
     {
-        return NULL;
+        if (gtph->type != GTPU_MSGTYPE_ECHO_REQ)
+        {
+            return NULL;
+        }
+
+        pkb_resp = pkbuf_alloc(0, 100 /* enough for ECHO_RSP; use smaller buffer */);
+        d_assert(pkb_resp, return NULL, "Can't allocate pkbuf");
+        gtph_resp = (gtp_header_t *)pkb_resp->payload;
+
+        /* reply back immediately */
+        gtph_resp->flags = (1 << 5); /* set version */
+        gtph_resp->flags |= (1 << 4); /* set PT */
+        gtph_resp->type = GTPU_MSGTYPE_ECHO_RSP;
+        length = 0;     /* length of Recovery IE */
+        gtph_resp->length = htons(length); /* to be overwriten */
+        gtph_resp->teid = 0;
+        idx = 8;
+
+        if (gtph->flags & (GTPU_FLAGS_PN | GTPU_FLAGS_S))
+        {
+            length += 4;
+            if (gtph->flags & GTPU_FLAGS_S)
+            {
+                /* sequence exists */
+                gtph_resp->flags |= GTPU_FLAGS_S;
+                *((c_uint8_t *)pkb_resp->payload + idx) = *((c_uint8_t *)pkb->payload + idx);
+                *((c_uint8_t *)pkb_resp->payload + idx + 1) = *((c_uint8_t *)pkb->payload + idx + 1);
+            }
+            else
+            {
+                *((c_uint8_t *)pkb_resp->payload + idx) = 0;
+                *((c_uint8_t *)pkb_resp->payload + idx + 1) = 0;
+            }
+            idx += 2;
+            if (gtph->flags & GTPU_FLAGS_PN)
+            {
+                /* sequence exists */
+                gtph_resp->flags |= GTPU_FLAGS_PN;
+                *((c_uint8_t *)pkb_resp->payload + idx) = *((c_uint8_t *)pkb->payload + idx);
+            }
+            else
+            {
+                *((c_uint8_t *)pkb_resp->payload + idx) = 0;
+            }
+            idx++;
+            *((c_uint8_t *)pkb_resp->payload + idx) = 0; /* next-extension header */
+            idx++;
+        }
+        
+        /* fill Recovery IE */
+        length += 2;
+        *((c_uint8_t *)pkb_resp->payload + idx) = 14; idx++; /* type */
+        *((c_uint8_t *)pkb_resp->payload + idx) = 0; idx++; /* restart counter */
+
+        gtph_resp->length = htons(length);
+        pkb_resp->len = idx;                /* buffer length */
+
+        return pkb_resp;
+    }
+    /* Support for GTPv2-C */
+    else if ((gtph->flags >> 5) == 2)
+    {
+        if (gtph->type != GTP_ECHO_REQUEST_TYPE)
+        {
+            return NULL;
+        }
+
+        pkb_resp = pkbuf_alloc(0, 100 /* enough for ECHO_RSP; use smaller buffer */);
+        d_assert(pkb_resp, return NULL, "Can't allocate pkbuf");
+        gtph_resp = (gtp_header_t *)pkb_resp->payload;
+
+        /* reply back immediately */
+        gtph_resp->flags = (2 << 5); /* set version */
+        gtph_resp->type = GTP_ECHO_RESPONSE_TYPE;
+        length = 9;     /* length of Sequence Number (3) + Spare (1) + Recovery IE (5) */
+        gtph_resp->length = htons(length);
+        gtph_resp->teid = 0;
+
+        /* copy Sequency Number */
+        *((c_uint8_t *)pkb_resp->payload + 4) = *((c_uint8_t *)pkb->payload + 4);
+        *((c_uint8_t *)pkb_resp->payload + 5) = *((c_uint8_t *)pkb->payload + 5);
+        *((c_uint8_t *)pkb_resp->payload + 6) = *((c_uint8_t *)pkb->payload + 6);
+
+        /* copy Recovery IE */
+        *((c_uint8_t *)pkb_resp->payload + 8) = *((c_uint8_t *)pkb->payload + 8);
+        *((c_uint8_t *)pkb_resp->payload + 9) = *((c_uint8_t *)pkb->payload + 9);
+        *((c_uint8_t *)pkb_resp->payload + 10) = *((c_uint8_t *)pkb->payload + 10);
+        *((c_uint8_t *)pkb_resp->payload + 11) = *((c_uint8_t *)pkb->payload + 11);
+        *((c_uint8_t *)pkb_resp->payload + 12) = *((c_uint8_t *)pkb->payload + 12);
+
+        /* total buffer length */
+        pkb_resp->len = 13;
+
+        return pkb_resp;
     }
 
-    if (gtph->type != GTPU_MSGTYPE_ECHO_REQ)
-    {
-        return NULL;
-    }
-
-
-    pkb_resp = pkbuf_alloc(0, 100 /* enough for ECHO_RSP; use smaller buffer */);
-    d_assert(pkb_resp, return NULL, "Can't allocate pkbuf");
-    gtph_resp = (gtp_header_t *)pkb_resp->payload;
-
-    /* reply back immediately */
-    gtph_resp->flags = (1 << 5); /* set version */
-    gtph_resp->flags |= (1 << 4); /* set PT */
-    gtph_resp->type = GTPU_MSGTYPE_ECHO_RSP;
-    length = 0;     /* length of Recovery IE */
-    gtph_resp->length = htons(length); /* to be overwriten */
-    gtph_resp->teid = 0;
-    idx = 8;
-
-    if (gtph->flags & (GTPU_FLAGS_PN | GTPU_FLAGS_S))
-    {
-        length += 4;
-        if (gtph->flags & GTPU_FLAGS_S)
-        {
-            /* sequence exists */
-            gtph_resp->flags |= GTPU_FLAGS_S;
-            *((c_uint8_t *)pkb_resp->payload + idx) = *((c_uint8_t *)pkb->payload + idx);
-            *((c_uint8_t *)pkb_resp->payload + idx + 1) = *((c_uint8_t *)pkb->payload + idx + 1);
-        }
-        else
-        {
-            *((c_uint8_t *)pkb_resp->payload + idx) = 0;
-            *((c_uint8_t *)pkb_resp->payload + idx + 1) = 0;
-        }
-        idx += 2;
-        if (gtph->flags & GTPU_FLAGS_PN)
-        {
-            /* sequence exists */
-            gtph_resp->flags |= GTPU_FLAGS_PN;
-            *((c_uint8_t *)pkb_resp->payload + idx) = *((c_uint8_t *)pkb->payload + idx);
-        }
-        else
-        {
-            *((c_uint8_t *)pkb_resp->payload + idx) = 0;
-        }
-        idx++;
-        *((c_uint8_t *)pkb_resp->payload + idx) = 0; /* next-extension header */
-        idx++;
-    }
-    
-    /* fill Recovery IE */
-    length += 2;
-    *((c_uint8_t *)pkb_resp->payload + idx) = 14; idx++; /* type */
-    *((c_uint8_t *)pkb_resp->payload + idx) = 0; idx++; /* restart counter */
-
-    gtph_resp->length = htons(length);
-    pkb_resp->len = idx;                /* buffer length */
-
-    return pkb_resp;
+    return NULL;
 }
