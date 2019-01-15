@@ -123,6 +123,8 @@ def get_cells(cells):
         ie_type = 'eNB Information Reporting'
     elif ie_type.find('IPv4 Configuration Parameters (IP4CP)') != -1:
         ie_type = 'IP4CP'
+    elif ie_type.find('ECGI-List') != -1:
+        ie_type = 'ECGI List'
     if ie_type not in type_list.keys():
         assert False, "Unknown IE type : [" \
                 + cells[3].text + "]" + "(" + ie_type + ")"
@@ -196,7 +198,7 @@ else:
             continue
         if int(type) in range(128, 160):
             continue
-        if int(type) in range(231, 240):
+        if int(type) in range(237, 240):
             continue
         if key.find('Reserved') != -1:
             continue
@@ -343,6 +345,12 @@ msg_list["Release Access Bearers Request"]["table"] = 79
 msg_list["Release Access Bearers Response"]["table"] = 80
 msg_list["Modify Access Bearers Request"]["table"] = 84
 msg_list["Modify Access Bearers Response"]["table"] = 87
+msg_list["MBMS Session Start Request"]["table"] = 149
+msg_list["MBMS Session Start Response"]["table"] = 150
+msg_list["MBMS Session Update Request"]["table"] = 151
+msg_list["MBMS Session Update Response"]["table"] = 152
+msg_list["MBMS Session Stop Request"]["table"] = 153
+msg_list["MBMS Session Stop Response"]["table"] = 154
 
 for key in msg_list.keys():
     if "table" in msg_list[key].keys():
