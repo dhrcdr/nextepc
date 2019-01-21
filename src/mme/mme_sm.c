@@ -3,6 +3,7 @@
 #include "core_lib.h"
 
 #include "s1ap/s1ap_message.h"
+#include "m3ap/m3ap_message.h"
 #include "nas/nas_message.h"
 #include "gtp/gtp_xact.h"
 #include "fd/fd_lib.h"
@@ -203,18 +204,45 @@ void mme_state_operational(fsm_t *s, event_t *e)
             d_assert(FSM_STATE(&enb->sm), pkbuf_free(pkbuf); break,
                     "No S1AP State Machine");
 
-            rv = s1ap_decode_pdu(&message, pkbuf);
-            if (rv != CORE_OK)
-            {
-                d_print_hex(pkbuf->payload, pkbuf->len);
-                d_assert(0, s1ap_free_pdu(&message); pkbuf_free(pkbuf); break,
-                        "Can't decode S1AP_PDU");
-            }
+            // rv = s1ap_decode_pdu(&message, pkbuf);
+            // if (rv != CORE_OK)
+            // {
+            //     d_print_hex(pkbuf->payload, pkbuf->len);
+            //     d_assert(0, s1ap_free_pdu(&message); pkbuf_free(pkbuf); break,
+            //             "Can't decode S1AP_PDU");
+            // }
 
-            event_set_param1(e, (c_uintptr_t)enb->index);
-            event_set_param4(e, (c_uintptr_t)&message);
-            fsm_dispatch(&enb->sm, (fsm_event_t*)e);
+            // event_set_param1(e, (c_uintptr_t)enb->index);
+            // event_set_param4(e, (c_uintptr_t)&message);
+            // fsm_dispatch(&enb->sm, (fsm_event_t*)e);
 
+            m3ap_message_t messagem3;
+            rv = m3ap_decode_pdu(&messagem3, pkbuf);
+
+            /* SEND M3 SETUP RESPONSE IMMEDIATELY. TODO: PUT THIS IN FUNCTIONS */
+            pkbuf_t *m3apbuf = NULL;
+
+            M3AP_M3AP_PDU_t pdu;
+            M3AP_SuccessfulOutcome_t *successfulOutcome = NULL;
+
+            memset(&pdu, 0, sizeof (M3AP_M3AP_PDU_t));
+            pdu.present = M3AP_M3AP_PDU_PR_successfulOutcome;
+            pdu.choice.successfulOutcome = core_calloc(1, sizeof(M3AP_SuccessfulOutcome_t));
+
+            successfulOutcome = pdu.choice.successfulOutcome;
+            successfulOutcome->procedureCode = M3AP_ProcedureCode_id_m3Setup;
+            successfulOutcome->criticality = M3AP_Criticality_reject;
+            successfulOutcome->value.present = M3AP_SuccessfulOutcome__value_PR_M3SetupResponse;
+
+            rv = m3ap_encode_pdu(&m3apbuf, &pdu);
+            m3ap_free_pdu(&pdu);
+
+            core_sctp_sendmsg(enb->sock, m3apbuf->payload, m3apbuf->len, addr, 44, 0);
+            pkbuf_free(m3apbuf);
+
+            m3ap_free_pdu(&messagem3);
+
+            // was already here
             s1ap_free_pdu(&message);
             pkbuf_free(pkbuf);
             break;

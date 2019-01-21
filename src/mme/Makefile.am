@@ -32,6 +32,7 @@ endif
 
 libmme_la_DEPENDENCIES = \
     $(top_srcdir)/lib/s1ap/libs1ap.la \
+    $(top_srcdir)/lib/m3ap/libm3ap.la \
     $(top_srcdir)/lib/nas/libnas.la \
 	$(top_srcdir)/lib/fd/libfd.la \
     $(top_srcdir)/lib/gtp/libgtp.la \
@@ -40,6 +41,7 @@ libmme_la_DEPENDENCIES = \
 
 libmme_la_LIBADD = \
     $(top_srcdir)/lib/s1ap/libs1ap.la \
+    $(top_srcdir)/lib/m3ap/libm3ap.la \
     $(top_srcdir)/lib/nas/libnas.la \
     $(top_srcdir)/lib/fd/libfd.la \
     $(top_srcdir)/lib/gtp/libgtp.la \
@@ -51,6 +53,7 @@ AM_CPPFLAGS = \
     -I$(top_srcdir)/lib \
 	-I$(top_srcdir)/src \
     -I$(top_srcdir)/lib/s1ap/asn1c \
+    -I$(top_srcdir)/lib/m3ap/asn1c \
 	-I$(top_srcdir)/lib/@FREEDIAMETER_DIR@/include \
 	@MONGOC_CFLAGS@ \
 	$(NULL)

@@ -12,7 +12,7 @@ static asn_oer_constraints_t asn_OER_type_M3AP_MBMSServiceAreaListItem_constr_1 
 	-1	/* (SIZE(1..65536)) */};
 static asn_per_constraints_t asn_PER_type_M3AP_MBMSServiceAreaListItem_constr_1 CC_NOTUSED = {
 	{ APC_UNCONSTRAINED,	-1, -1,  0,  0 },
-	{ APC_CONSTRAINED,	 16, -1,  1,  65536 }	/* (SIZE(1..65536)) */,
+	{ APC_CONSTRAINED,	 16, -1,  1,  256 }	/* (SIZE(1..65536)) */,
 	0, 0	/* No PER value map */
 };
 static asn_TYPE_member_t asn_MBR_M3AP_MBMSServiceAreaListItem_1[] = {

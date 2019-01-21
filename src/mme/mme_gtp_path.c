@@ -61,6 +61,147 @@ static int _gtpv2_c_recv_cb(sock_id sock, void *data)
 
         pkbuf_free(pkbuf);
     }
+    else if (gtp_h->type == GTP_MBMS_SESSION_START_REQUEST_TYPE)
+    {
+        pkbuf_t *pkb_resp;
+        gtp_header_t *gtph_resp;
+        c_uint16_t length;
+
+        d_trace(3, "[GTPv2] RECV MBMS Session Start Request from [%s]\n",
+                CORE_ADDR(&from, buf));
+
+        /* TODO: Send MBMS Session Start Request over M3AP */
+        /* END TODO */
+
+        pkb_resp = pkbuf_alloc(0, MAX_SDU_LEN);
+        d_assert(pkb_resp, return -1, "Can't allocate pkbuf");
+        gtph_resp = (gtp_header_t *)pkb_resp->payload;
+
+        /* CREATE HEADER */
+        gtph_resp->flags = (2 << 5); /* set version */
+        gtph_resp->flags |= (1 << 3); /* set TEID flag */
+        gtph_resp->type = GTP_MBMS_SESSION_START_RESPONSE_TYPE;
+        length = 27;     /* length of TEID (4) length of Sequence Number (3) + Spare (1) + Cause IE (6) + F-TEID IE (13) */
+        gtph_resp->length = htons(length);
+
+        /* COPY TEID */
+        *((c_uint8_t *)pkb_resp->payload + 4) = *((c_uint8_t *)pkbuf->payload + 17);
+        *((c_uint8_t *)pkb_resp->payload + 5) = *((c_uint8_t *)pkbuf->payload + 18);
+        *((c_uint8_t *)pkb_resp->payload + 6) = *((c_uint8_t *)pkbuf->payload + 19);
+        *((c_uint8_t *)pkb_resp->payload + 7) = *((c_uint8_t *)pkbuf->payload + 20);
+
+        /* COPY SEQUENCE NUMBER */
+        *((c_uint8_t *)pkb_resp->payload + 8) = *((c_uint8_t *)pkbuf->payload + 8);
+        *((c_uint8_t *)pkb_resp->payload + 9) = *((c_uint8_t *)pkbuf->payload + 9);
+        *((c_uint8_t *)pkb_resp->payload + 10) = *((c_uint8_t *)pkbuf->payload + 10);
+
+        /* CREATE CAUSE IE */
+        *((c_uint8_t *)pkb_resp->payload + 12) = 2;  /* Type */
+        *((c_uint8_t *)pkb_resp->payload + 13) = 0;  /* Length */
+        *((c_uint8_t *)pkb_resp->payload + 14) = 2;
+        *((c_uint8_t *)pkb_resp->payload + 15) = 0;  /* Spare | Instance */
+        *((c_uint8_t *)pkb_resp->payload + 16) = 16; /* Cause value */
+        *((c_uint8_t *)pkb_resp->payload + 17) = 0;  /* Spare | PCE | BCE | CS */
+
+        /* COPY F-TEID IE */
+        *((c_uint8_t *)pkb_resp->payload + 18) = *((c_uint8_t *)pkbuf->payload + 12);
+        *((c_uint8_t *)pkb_resp->payload + 19) = *((c_uint8_t *)pkbuf->payload + 13);
+        *((c_uint8_t *)pkb_resp->payload + 20) = *((c_uint8_t *)pkbuf->payload + 14);
+        *((c_uint8_t *)pkb_resp->payload + 21) = *((c_uint8_t *)pkbuf->payload + 15);
+        *((c_uint8_t *)pkb_resp->payload + 22) = *((c_uint8_t *)pkbuf->payload + 16);
+        *((c_uint8_t *)pkb_resp->payload + 23) = *((c_uint8_t *)pkbuf->payload + 17);
+        *((c_uint8_t *)pkb_resp->payload + 24) = *((c_uint8_t *)pkbuf->payload + 18);
+        *((c_uint8_t *)pkb_resp->payload + 25) = *((c_uint8_t *)pkbuf->payload + 19);
+        *((c_uint8_t *)pkb_resp->payload + 26) = *((c_uint8_t *)pkbuf->payload + 20);
+        *((c_uint8_t *)pkb_resp->payload + 27) = *((c_uint8_t *)pkbuf->payload + 21);
+        *((c_uint8_t *)pkb_resp->payload + 28) = *((c_uint8_t *)pkbuf->payload + 22);
+        *((c_uint8_t *)pkb_resp->payload + 29) = *((c_uint8_t *)pkbuf->payload + 23);
+        *((c_uint8_t *)pkb_resp->payload + 30) = *((c_uint8_t *)pkbuf->payload + 24);
+
+        pkb_resp->len = 31;
+
+        if (pkb_resp)
+        {
+            ssize_t sent;
+
+            /* Echo reply */
+            d_trace(3, "[GTPv2] SEND MBMS Session Start Response to [%s]\n",
+                    CORE_ADDR(&from, buf));
+
+            sent = core_sendto(sock,
+                    pkb_resp->payload, pkb_resp->len, 0, &from);
+            if (sent < 0 || sent != pkb_resp->len)
+            {
+                d_error("core_sendto failed(%d:%s)", errno, strerror(errno));
+            }
+            pkbuf_free(pkb_resp);
+        }
+
+        pkbuf_free(pkbuf);
+    }
+    else if (gtp_h->type == GTP_MBMS_SESSION_STOP_REQUEST_TYPE)
+    {
+        pkbuf_t *pkb_resp;
+        gtp_header_t *gtph_resp;
+        c_uint16_t length;
+
+        d_trace(3, "[GTPv2] RECV MBMS Session Stop Request from [%s]\n",
+                CORE_ADDR(&from, buf));
+
+        /* TODO: Send MBMS Session Stop Request over M3AP */
+        /* END TODO */
+
+        pkb_resp = pkbuf_alloc(0, MAX_SDU_LEN);
+        d_assert(pkb_resp, return -1, "Can't allocate pkbuf");
+        gtph_resp = (gtp_header_t *)pkb_resp->payload;
+
+        /* CREATE HEADER */
+        gtph_resp->flags = (2 << 5); /* set version */
+        gtph_resp->flags |= (1 << 3); /* set TEID flag */
+        gtph_resp->type = GTP_MBMS_SESSION_STOP_RESPONSE_TYPE;
+        length = 14;     /* length of TEID (4) length of Sequence Number (3) + Spare (1) + Cause IE (6) */
+        gtph_resp->length = htons(length);
+
+        /* COPY TEID */
+        *((c_uint8_t *)pkb_resp->payload + 4) = *((c_uint8_t *)pkbuf->payload + 4);
+        *((c_uint8_t *)pkb_resp->payload + 5) = *((c_uint8_t *)pkbuf->payload + 5);
+        *((c_uint8_t *)pkb_resp->payload + 6) = *((c_uint8_t *)pkbuf->payload + 6);
+        *((c_uint8_t *)pkb_resp->payload + 7) = *((c_uint8_t *)pkbuf->payload + 7);
+
+        /* COPY SEQUENCE NUMBER */
+        *((c_uint8_t *)pkb_resp->payload + 8) = *((c_uint8_t *)pkbuf->payload + 8);
+        *((c_uint8_t *)pkb_resp->payload + 9) = *((c_uint8_t *)pkbuf->payload + 9);
+        *((c_uint8_t *)pkb_resp->payload + 10) = *((c_uint8_t *)pkbuf->payload + 10);
+
+        /* CREATE CAUSE IE */
+        *((c_uint8_t *)pkb_resp->payload + 12) = 2;  /* Type */
+        *((c_uint8_t *)pkb_resp->payload + 13) = 0;  /* Length */
+        *((c_uint8_t *)pkb_resp->payload + 14) = 2;
+        *((c_uint8_t *)pkb_resp->payload + 15) = 0;  /* Spare | Instance */
+        *((c_uint8_t *)pkb_resp->payload + 16) = 16; /* Cause value */
+        *((c_uint8_t *)pkb_resp->payload + 17) = 0;  /* Spare | PCE | BCE | CS */
+
+        pkb_resp->len = 18;
+
+        if (pkb_resp)
+        {
+            ssize_t sent;
+
+            /* Echo reply */
+            d_trace(3, "[GTPv2] SEND MBMS Session Stop Response to [%s]\n",
+                    CORE_ADDR(&from, buf));
+
+            sent = core_sendto(sock,
+                    pkb_resp->payload, pkb_resp->len, 0, &from);
+            if (sent < 0 || sent != pkb_resp->len)
+            {
+                d_error("core_sendto failed(%d:%s)", errno, strerror(errno));
+            }
+            pkbuf_free(pkb_resp);
+        }
+
+        pkbuf_free(pkbuf);
+    }
     else
     {
         event_set(&e, MME_EVT_S11_MESSAGE);

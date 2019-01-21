@@ -4,9 +4,9 @@ SUBDIRS = asn1c
 
 pkglib_LTLIBRARIES = libm3ap.la
 
-libm3ap_la_SOURCES = $(NULL)
-
-
+libm3ap_la_SOURCES = \
+	m3ap_decoder.c m3ap_encoder.c m3ap_free.c \
+	$(NULL)
 
 libm3ap_la_DEPENDENCIES = \
     $(top_srcdir)/lib/core/src/libcore.la \
