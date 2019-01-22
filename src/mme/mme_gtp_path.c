@@ -2,6 +2,8 @@
 #include "core_debug.h"
 #include "core_pkbuf.h"
 
+#include "m3ap/m3ap_message.h"
+
 #include "gtp/gtp_node.h"
 #include "gtp/gtp_path.h"
 #include "gtp/gtp_xact.h"
@@ -60,6 +62,76 @@ static int _gtpv2_c_recv_cb(sock_id sock, void *data)
         }
 
         pkbuf_free(pkbuf);
+
+        /* THIS IS THE CODE FOR MBMS SESSION START REQUEST OVER M3AP. PUT IN MME_SM.C OR FUNCTIONS */
+        mme_enb_t *enb = NULL;
+        pkbuf_t *m3apbuf = NULL;
+
+        enb = mme_enb_find_by_addr(&from);
+
+        M3AP_M3AP_PDU_t pdu;
+        M3AP_InitiatingMessage_t *initiatingMessage = NULL;
+        M3AP_MBMSSessionStartRequest_t *MBMSSessionStartRequest = NULL;
+
+        M3AP_MBMSSessionStartRequest_IEs_t *ie = NULL;
+        M3AP_MME_MBMS_M3AP_ID_t *MME_MBMS_M3AP_ID = NULL;
+        // M3AP_TMGI_t *TMGI = NULL;
+        // M3AP_MBMS_E_RAB_QoS_Parameters_t *MBMS_E_RAB_QoS_Parameters = NULL;
+        // M3AP_MBMS_Session_Duration_t *MBMS_Session_Duration = NULL;
+        // M3AP_MBMS_Service_Area_t *MBMS_Service_Area = NULL;
+        // M3AP_MinimumTimeToMBMSDataTransfer_t *MinimumTimeToMBMSDataTransfer = NULL;
+        // M3AP_TNL_Information_t *TNL_Information = NULL;
+
+        memset(&pdu, 0, sizeof (M3AP_M3AP_PDU_t));
+        pdu.present = M3AP_M3AP_PDU_PR_initiatingMessage;
+        pdu.choice.initiatingMessage = core_calloc(1, sizeof(M3AP_InitiatingMessage_t));
+
+        initiatingMessage = pdu.choice.initiatingMessage;
+        initiatingMessage->procedureCode = M3AP_ProcedureCode_id_mBMSsessionStart;
+        initiatingMessage->criticality = M3AP_Criticality_reject;
+        initiatingMessage->value.present = M3AP_InitiatingMessage__value_PR_MBMSSessionStartRequest;
+
+        MBMSSessionStartRequest = &initiatingMessage->value.choice.MBMSSessionStartRequest;
+
+        /* MME MBMS M3AP ID */
+
+        ie = core_calloc(1, sizeof(M3AP_MBMSSessionStartRequest_IEs_t));
+        ASN_SEQUENCE_ADD(&MBMSSessionStartRequest->protocolIEs, ie);
+
+        ie->id = M3AP_ProtocolIE_ID_id_MME_MBMS_M3AP_ID;
+        ie->criticality = M3AP_Criticality_reject;
+        ie->value.present = M3AP_MBMSSessionStartRequest_IEs__value_PR_MME_MBMS_M3AP_ID;
+
+        MME_MBMS_M3AP_ID = &ie->value.choice.MME_MBMS_M3AP_ID;
+        *MME_MBMS_M3AP_ID = 85;
+
+        /* TMGI */
+
+        // ie = core_calloc(1, sizeof(M3AP_MBMSSessionStartRequest_IEs_t));
+        // ASN_SEQUENCE_ADD(&MBMSSessionStartRequest->protocolIEs, ie);
+
+        // ie->id = M3AP_ProtocolIE_ID_id_TMGI;
+        // ie->criticality = M3AP_Criticality_reject;
+        // ie->value.present = M3AP_MBMSSessionStartRequest_IEs__value_PR_TMGI;
+
+        // TMGI = &ie->value.choice.TMGI;
+
+        /* MBMS E-RAB QoS parameters */
+
+        /* MBMS Session Duration */
+
+        /* MBMS Service Area */
+
+        /* Minimum Time to MBMS Data Transfer */
+
+        /* TNL Information */
+
+        rv = m3ap_encode_pdu(&m3apbuf, &pdu);
+        m3ap_free_pdu(&pdu);
+
+        core_sctp_sendmsg(enb->sock, m3apbuf->payload, m3apbuf->len, &from, 44, 0);
+        pkbuf_free(m3apbuf);
+        /* END OF "THIS IS THE CODE ..." */
     }
     else if (gtp_h->type == GTP_MBMS_SESSION_START_REQUEST_TYPE)
     {
